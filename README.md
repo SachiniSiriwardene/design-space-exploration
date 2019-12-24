@@ -37,7 +37,7 @@ The basic usage is as follows
     # run the exploration NO_OF_STEPS defined by the user
     results_df = explorer.explore(NO_OF_STEPS, EVAL_FUNC)
 
-The EVAL_FUNC is a function that actually execute the experiment and return the measurements. It should follow the below template.
+The EVAL_FUNC is the function that actually execute the experiment and return the measurements. It should follow the below template.
 
     def EVAL_FUNC(param_dict)
 
@@ -74,4 +74,4 @@ Observed error compared to the true function:
     Uniform random + XGB | MSE : 46.26 | MAPE : 81.82
 
 * MSE : mean squared error
-* MAPE : Mean absolute percentage error
+* MAPE : mean absolute percentage error
