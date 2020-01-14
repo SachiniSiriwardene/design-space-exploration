@@ -22,7 +22,6 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
-from mpl_toolkits import mplot3d
 from sklearn.utils import shuffle
 
 from model import GPR
@@ -30,7 +29,6 @@ from model import GPR
 seed = 42
 np.random.seed(seed)
 
-plt3d = mplot3d
 logger = logging.getLogger()
 
 
@@ -116,7 +114,7 @@ class Explorer:
 
         for i in range(n):
 
-            losses = self.gpr.fit(X, y, n_iter=100 if i > 0 else 2000, learning_rate=0.1)
+            losses = self.gpr.fit(X.astype(np.float64), y, n_iter=100 if i > 0 else 2000, learning_rate=0.1)
 
             eval_data = np.empty((samples, 0))
             for param in init_df.columns:
