@@ -155,24 +155,29 @@ def eval_accuracy(X, y, model, estimator, eval_func, input_domain):
         X.shape[0], mean_squared_error(test_y, pred_best),
         mean_absolute_percentage_error(test_y, pred_best)))
 
-    rand_X = np.random.uniform(min_X, max_X, X.shape)
-    rand_y = eval_func({"x%d" % i: _x for i, _x in enumerate(rand_X.T)})
+    gpr_err = []
+    xgb_err = []
+    for i in range(5):
+        rand_X = np.random.uniform(min_X, max_X, X.shape)
+        rand_y = eval_func({"x%d" % i: _x for i, _x in enumerate(rand_X.T)})
 
-    model_rand = GaussianProcessRegressor(RBF(2), alpha=0.01)
-    model_rand.fit(rand_X, rand_y)
-    pred_rand = model_rand.predict(test_X)
+        model_rand = GaussianProcessRegressor(RBF(2), alpha=0.01)
+        model_rand.fit(rand_X, rand_y)
+        pred_rand = model_rand.predict(test_X)
+
+        gpr_err.append([mean_squared_error(test_y, pred_rand), mean_absolute_percentage_error(test_y, pred_rand)])
+
+        model_rand = xgboost.XGBRegressor()
+        model_rand.fit(rand_X, rand_y)
+        pred_rand = model_rand.predict(test_X)
+
+        xgb_err.append([mean_squared_error(test_y, pred_rand), mean_absolute_percentage_error(test_y, pred_rand)])
 
     print("Error using %d uniform sampled data with GPR MSE : %.4f ,MAPE : %.4f" % (
-        rand_X.shape[0], mean_squared_error(test_y, pred_rand),
-        mean_absolute_percentage_error(test_y, pred_rand)))
-
-    model_rand = xgboost.XGBRegressor()
-    model_rand.fit(rand_X, rand_y)
-    pred_rand = model_rand.predict(test_X)
+        X.shape[0], np.mean(gpr_err, axis=0)[0], np.mean(gpr_err, axis=0)[1]))
 
     print("Error using %d uniform sampled data with XGB MSE : %.4f ,MAPE : %.4f" % (
-        rand_X.shape[0], mean_squared_error(test_y, pred_rand),
-        mean_absolute_percentage_error(test_y, pred_rand)))
+        X.shape[0], np.mean(xgb_err, axis=0)[0], np.mean(xgb_err, axis=0)[1]))
 
 
 def test_eval(param_dict):
