@@ -247,15 +247,15 @@ if __name__ == '__main__':
     step = 30
     n = 200
 
-    eval_func = eggholder_function
-    input_domain = [-212, 212]
+    eval_func = styblinski_tang_function
+    input_domain = [-4, 4]
 
     xgb = xgboost.XGBRegressor(verbosity=0)
     init_df = None
 
     explorer = Explorer(
         {
-            'param1': RandomFloat(input_domain[0], input_domain[1]),
+            'param1': RandomFloat(input_domain[0], input_domain[1], decimals=2),
             'param2': RandomFloat(input_domain[0], input_domain[1]),
         },
         path="data/out_%d.csv" % file_id

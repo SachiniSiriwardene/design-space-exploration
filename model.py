@@ -32,7 +32,7 @@ pyro.set_rng_seed(seed)
 
 class GPR:
 
-    def __init__(self, dim, lengthscale=5, variance=0.5):
+    def __init__(self, dim, lengthscale=10, variance=0.5):
         self.dim = dim
         self.kernel = gp.kernels.RBF(input_dim=dim, variance=torch.tensor(variance),
                                      lengthscale=torch.tensor(lengthscale))
