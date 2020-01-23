@@ -35,7 +35,16 @@ class RandomInt(__RandomDist):
 
 class RandomFloat(__RandomDist):
 
+    def __init__(self, low, high, decimals=None):
+        super().__init__(low, high)
+        self.decimals = decimals
+
     def sample(self, size):
-        return np.random.uniform(self.low, self.high, (size, 1))
-
-
+        decimals = self.decimals
+        sample = np.random.uniform(self.low, self.high, (size, 1))
+        if decimals is not None:
+            if decimals >= 0:
+                sample = np.round(sample, decimals=decimals)
+            else:
+                raise Exception('decimals should be greater than or equals to 0')
+        return sample
