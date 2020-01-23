@@ -255,7 +255,7 @@ if __name__ == '__main__':
 
     explorer = Explorer(
         {
-            'param1': RandomFloat(input_domain[0], input_domain[1], decimals=2),
+            'param1': RandomFloat(input_domain[0], input_domain[1]),
             'param2': RandomFloat(input_domain[0], input_domain[1]),
         },
         path="data/out_%d.csv" % file_id
