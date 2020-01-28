@@ -1,4 +1,4 @@
-# Design Space Exploration
+# AutoGP: Efficient Design Space Exploration
 
 Find the optimal parameter values minimizing the number of experiments to accurately profile selected system behaviors.
 
