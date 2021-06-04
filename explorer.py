@@ -22,6 +22,7 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.utils import shuffle
 
 from model import GPR
@@ -85,6 +86,42 @@ class Explorer:
                 target_values.append(exp_func(eval_point.to_dict()))
             return np.array(target_values).flatten()
 
+    def run_experiment(self, inputs):
+        target_values = []
+        if isinstance(inputs, dict):
+            logger.info("Parameter values for test execution:")
+            logger.info(inputs)
+            with open('config.yaml') as f:
+                confDict = yaml.load(f, Loader=yaml.FullLoader)
+            #print(inputs)
+            confDict['execution'][0]['concurrency'] = int(inputs['concurrency'])
+            message = "x" * int(inputs['message'])
+            confDict['scenarios']['sample']['requests'][0]['body'] = '{"Message": ' + message + '}'
+            with open('config.yaml', "w") as f:
+                yaml.dump(confDict, f)
+
+            os.system('bzt config.yaml')
+            data = pd.read_csv('results.csv')
+            target_values.append(data._get_value(1, 'avg_lt'))
+        else:
+            for index, row in inputs.iterrows():
+                logger.info("Parameter values for initial test execution:")
+                print(row['concurrency'], row['message'])
+                with open('config.yaml') as f:
+                    confDict = yaml.load(f, Loader=yaml.FullLoader)
+                confDict['execution'][0]['concurrency'] = str(row['concurrency'])
+                message = "x" * row['message']
+                #'{"Message": ' + message + '}'
+                confDict['scenarios']['sample']['requests'][0]['body'] = '{"Message": ' + message + '}'
+                with open('config.yaml', "w") as f:
+                    yaml.dump(confDict, f)
+
+                os.system('bzt config.yaml')
+                data = pd.read_csv('results.csv')
+                target_values.append(data._get_value(1 ,'avg_lt'))
+
+        return np.array(target_values).flatten()
+
     def explore(self, n: int, exp_func, target_col='target', samples=500, init_n=20):
         """
         performs Bayesian exploration
@@ -101,8 +138,10 @@ class Explorer:
             _dir = os.path.dirname(self.path)
             if not os.path.exists(_dir):
                 os.makedirs(_dir)
+            # feed these values to the jmeter script and get the target y values
             init_df = self.initialize(init_n)
-            init_df[target_col] = self.eval_target(exp_func, init_df)
+            #init_df[target_col] = self.eval_target(exp_func, init_df)
+            init_df[target_col] = self.run_experiment(init_df)
             init_df.to_csv(self.path, index=False)
         else:
             init_df = pd.read_csv(self.path)
@@ -126,9 +165,13 @@ class Explorer:
             max_idx = np.argmax(shuffle(unc, random_state=seed))
             next_point = np.array([eval_data[max_idx]]).flatten()
 
-            eval_y = np.array(self.eval_target(exp_func, {param: next_point[i]
+            # call jmeter script with the new data points
+            eval_y = np.array(self.run_experiment({param: next_point[i]
                                                           for i, param in enumerate(init_df.columns) if
                                                           param != target_col})).flatten()
+            # eval_y = np.array(self.eval_target(exp_func, {param: next_point[i]
+            #                                               for i, param in enumerate(init_df.columns) if
+            #                                               param != target_col})).flatten()
             X = np.append(X, [next_point], axis=0)
             y = np.append(y, eval_y)
 

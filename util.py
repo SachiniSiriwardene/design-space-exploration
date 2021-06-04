@@ -32,6 +32,9 @@ class RandomInt(__RandomDist):
     def sample(self, size):
         return np.random.randint(self.low, self.high, (size, 1))
 
+    def __init__(self, low, high, decimals=None):
+        super().__init__(low, high)
+
 
 class RandomFloat(__RandomDist):
 

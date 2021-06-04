@@ -31,6 +31,7 @@ from sklearn.metrics import mean_squared_error
 
 from explorer import Explorer
 from util import RandomFloat
+from util import RandomInt
 
 warnings.filterwarnings("ignore")
 
@@ -248,17 +249,19 @@ if __name__ == '__main__':
     n = 200
 
     eval_func = styblinski_tang_function
-    input_domain = [-4, 4]
+    input_domain_1 = [10, 100]
+    input_domain_2 = [10, 100]
 
     xgb = xgboost.XGBRegressor(verbosity=0)
     init_df = None
 
     explorer = Explorer(
         {
-            'param1': RandomFloat(input_domain[0], input_domain[1], decimals=2),
-            'param2': RandomFloat(input_domain[0], input_domain[1]),
+            'concurrency': RandomInt(input_domain_1[0], input_domain_1[1]),
+            'message': RandomInt(input_domain_2[0], input_domain_2[1]),
         },
-        path="data/out_%d.csv" % file_id
+        #path="data/out_%d.csv" % file_id
+        path = "data/out_1606153147.csv"
     )
 
     for i in range(0, n, step):
@@ -266,8 +269,10 @@ if __name__ == '__main__':
 
         X, y = init_df.iloc[:, :-1].values, init_df.iloc[:, -1].values
 
+        print('Learned points : ')
+        print(X)
         print("Number of data points : %d" % X.shape[0])
-        eval_accuracy(X, y, explorer.gpr, xgb, eval_func, input_domain)
+        #eval_accuracy(X, y, explorer.gpr, xgb, eval_func, input_domain)
 
-        plot2D(X, y, explorer.gpr, xgb, eval_func, input_domain)
-        plt.show()
+        #plot2D(X, y, explorer.gpr, xgb, eval_func, input_domain)
+        #plt.show()
