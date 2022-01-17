@@ -19,11 +19,17 @@
 import logging
 import time
 import warnings
+import os
+
 
 import numpy as np
+import pandas as pd
 import xgboost
 from matplotlib import pyplot as plt
+from matplotlib import cm
 from mpl_toolkits import mplot3d
+from matplotlib.ticker import LinearLocator
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.base import clone
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
@@ -32,6 +38,8 @@ from sklearn.metrics import mean_squared_error
 from explorer import Explorer
 from util import RandomFloat
 from util import RandomInt
+import yaml
+
 
 warnings.filterwarnings("ignore")
 
@@ -133,6 +141,69 @@ def plot2D(X, y, model, estimator, eval_func, input_domain):
     ax.plot_surface(x1, x2, z, cmap=cmap, edgecolor='none')
     ax.set_title("uniform random + XGB")
 
+def eval_accuracy_new (X, y, model, estimator, domain_bound_1, domain_bound_2):
+    min_X1, max_X1, = domain_bound_1
+    min_X2, max_X2 = domain_bound_2
+    test_x1 = np.outer(np.linspace(min_X1, max_X1, n), np.ones(n)).flatten()
+    test_x2 = np.outer(np.linspace(min_X2, max_X2, n), np.ones(n)).T.flatten()
+    test_X = np.array([test_x1, test_x2]).T.reshape(-1, 2)
+    test_y = run_experiment_for_eval(test_x1, test_x2)
+    pred_gpr = model.predict(np.array([test_x1, test_x2]).T.reshape(-1, 2))[0]
+    print("Error using %d explored data with GPR MSE : %.4f ,MAPE : %.4f" % (
+        X.shape[0], mean_squared_error(test_y, pred_gpr),
+        mean_absolute_percentage_error(test_y, pred_gpr)))
+
+    model_best = clone(estimator)
+    model_best.fit(X, y)
+    pred_best = model_best.predict(test_X)
+
+    print("Error using %d explored data with XGB MSE : %.4f ,MAPE : %.4f" % (
+        X.shape[0], mean_squared_error(test_y, pred_best),
+        mean_absolute_percentage_error(test_y, pred_best)))
+
+    gpr_err = []
+    xgb_err = []
+    for i in range(5):
+        rand_X = np.random.uniform(min_X1, max_X1, X.shape)
+        rand_y = run_experiment_for_eval({"x%d" % i: _x for i, _x in enumerate(rand_X.T)})
+
+        model_rand = GaussianProcessRegressor(RBF(2), alpha=0.01)
+        model_rand.fit(rand_X, rand_y)
+        pred_rand = model_rand.predict(test_X)
+
+        gpr_err.append([mean_squared_error(test_y, pred_rand), mean_absolute_percentage_error(test_y, pred_rand)])
+
+        model_rand = xgboost.XGBRegressor()
+        model_rand.fit(rand_X, rand_y)
+        pred_rand = model_rand.predict(test_X)
+
+        xgb_err.append([mean_squared_error(test_y, pred_rand), mean_absolute_percentage_error(test_y, pred_rand)])
+
+    print("Error using %d uniform sampled data with GPR MSE : %.4f ,MAPE : %.4f" % (
+        X.shape[0], np.mean(gpr_err, axis=0)[0], np.mean(gpr_err, axis=0)[1]))
+
+    print("Error using %d uniform sampled data with XGB MSE : %.4f ,MAPE : %.4f" % (
+        X.shape[0], np.mean(xgb_err, axis=0)[0], np.mean(xgb_err, axis=0)[1]))
+
+
+
+def run_experiment_for_eval(X1, X2):
+    target_values = []
+    for a, s in np.nditer([X1, X2]):
+        with open('config.yaml') as f:
+            confDict = yaml.load(f, Loader=yaml.FullLoader)
+        confDict['execution'][0]['concurrency'] = str(a)
+        #message = "x" * s
+        message = float(input('x'))
+        # '{"Message": ' + message + '}'
+        confDict['scenarios']['sample']['requests'][0]['body'] = '{"Message": ' + message * s + '}'
+        with open('config.yaml', "w") as f:
+            yaml.dump(confDict, f)
+
+        os.system('bzt config.yaml')
+        data = pd.read_csv('results.csv')
+        target_values.append(data._get_value(1, 'avg_lt'))
+    return np.array(target_values).flatten()
 
 def eval_accuracy(X, y, model, estimator, eval_func, input_domain):
     n = 30
@@ -242,10 +313,38 @@ def eggholder_function(param_dict):
     return -(X[1] + 47) * np.sin(np.sqrt(np.abs(X[0] / 2.0 + (X[1] + 47)))) - X[0] * np.sin(
         np.sqrt(np.abs(X[0] - (X[1] + 47)))) + np.random.normal(0, 0.2, len(X[0]))
 
+#def plot_3D_surface(path):
+
+
+    # init_df = pd.read_csv(path)
+    # print(init_df.shape[0])
+    # X = init_df.iloc[:, 0].values
+    # Y = init_df.iloc[:, 1].values
+    # Z = init_df.iloc[:, 2].values
+    # print(np.reshape(Z,(35,1)))
+    # x1, x2 = np.meshgrid(X, Y)
+    #
+    # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    # surf = ax.plot_surface(X, Y, np.reshape(Z,(init_df.shape[0],1)), rstride=1, cstride=1, cmap=cm.viridis)
+    # # Customize the z axis.
+    # ax.set_zlim(0, 0.1)
+    # ax.zaxis.set_major_locator(LinearLocator(10))
+    # # A StrMethodFormatter is used automatically
+    # ax.zaxis.set_major_formatter('{x:.02f}')
+    #
+    # # Add a color bar which maps values to colors.
+    # fig.colorbar(surf, shrink=0.5, aspect=5)
+    # plt.show()
+    # plt.savefig('figs/fig1.png')
+
+
+
+
+
 
 if __name__ == '__main__':
     file_id = time.time()
-    step = 30
+    step = 1
     n = 200
 
     eval_func = styblinski_tang_function
@@ -260,19 +359,22 @@ if __name__ == '__main__':
             'concurrency': RandomInt(input_domain_1[0], input_domain_1[1]),
             'message': RandomInt(input_domain_2[0], input_domain_2[1]),
         },
-        #path="data/out_%d.csv" % file_id
-        path = "data/out_1606153147.csv"
+        path="data/out_%d.csv" % file_id
+        #path = "data/out_1606153147.csv"
     )
 
     for i in range(0, n, step):
         init_df = explorer.explore(step, eval_func, init_n=5)
 
         X, y = init_df.iloc[:, :-1].values, init_df.iloc[:, -1].values
-
+        print('Iteration ============ : ')
+        print(i)
         print('Learned points : ')
         print(X)
         print("Number of data points : %d" % X.shape[0])
         #eval_accuracy(X, y, explorer.gpr, xgb, eval_func, input_domain)
+        eval_accuracy_new(X, y, explorer.gpr, xgb, input_domain_1, input_domain_1)
 
         #plot2D(X, y, explorer.gpr, xgb, eval_func, input_domain)
         #plt.show()
+    #plot_3D_surface("/Users/sachini/Documents/Msc/DSE_Tool/design-space-exploration/data/out_1632146586.csv")

@@ -55,6 +55,7 @@ class GPR:
         if self.gpr is None:
             self.gpr = gp.models.GPRegression(X, y, self.kernel, noise=torch.tensor(0.1))
 
+
             # initiate the optimizer
             self.optimizer = torch.optim.Adam(self.gpr.parameters(), lr=learning_rate)
             self.loss_fn = pyro.infer.Trace_ELBO().differentiable_loss
